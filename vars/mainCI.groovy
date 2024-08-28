@@ -1,5 +1,6 @@
+
 def call() {
-  node ( 'ci-server' ) {
+  node('ci-server') {
 
     stage('CodeCheckout') {
 
@@ -12,34 +13,41 @@ def call() {
       }
       checkout scmGit(
               branches: [[name: "${branch_name}"]],
-              userRemoteConfigs: [[url: "https://github.com/anand-320/expense-${component}"]]
+              userRemoteConfigs: [[url: "https://github.com/raghudevopsb78/roboshop-${component}"]]
       )
     }
 
-    if (env.TAG_NAME ==~ ',*') {
-      stage('Build Code'){
-        sh 'docker build -t 942136769355.dkr.ecr.us-east-1.amazonaws.com/expense-${component}:${TAG_NAME} .'
+    if (env.TAG_NAME ==~ '.*') {
+      stage('Build Code') {
+        sh 'docker build -t 633788536644.dkr.ecr.us-east-1.amazonaws.com/roboshop-${component}:${TAG_NAME} .'
       }
-      stage('Release software'){
-        sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 942136769355.dkr.ecr.us-east-1.amazonaws.com'
-        sh 'docker push 942136769355.dkr.ecr.us-east-1.amazonaws.com/expense-${component}:${TAG_NAME} '
+      stage('Release Software') {
+        sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 633788536644.dkr.ecr.us-east-1.amazonaws.com'
+        sh 'docker push 633788536644.dkr.ecr.us-east-1.amazonaws.com/roboshop-${component}:${TAG_NAME}'
+      }
+      stage('Deploy to Dev') {
+        sh 'aws eks update-kubeconfig --name dev-eks'
+        sh 'argocd login argocd-dev.rdevops6a.online --username admin --password $(argocd admin initial-password -n argocd | head -1) --insecure --grpc-web'
+        sh 'argocd app set ${component} --parameter appVersion=${TAG_NAME}'
+        sh 'argocd app sync ${component}'
       }
     } else {
-      stage('lint code') {
-        print 'ok'
+      stage('Lint Code') {
+        print 'OK'
+      }
+      if(env.BRANCH_NAME != 'main') {
+        stage('Run Unit tests') {
+          print 'OK'
+        }
+        stage('Run Integration tests') {
+          print 'OK'
+        }
+      }
+      stage('Sonar Scan Code Review') {
+        print 'OK'
       }
 
-      if (env.BRANCH_NAME !=~ 'main') {
-        stage('Run unit test'){
-          print 'ok'
-        }
-        stage('Run integration test'){
-          print 'ok'
-        }
-      }
-      stage('Sonar scan code review'){
-        print 'ok'
-      }
     }
+
   }
 }
